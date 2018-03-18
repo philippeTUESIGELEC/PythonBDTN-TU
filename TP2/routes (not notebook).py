@@ -67,7 +67,7 @@ minEpaisseur = df.epaisseurdernierstravaux.min()
 df = df.loc[df['epaisseurdernierstravaux']!= maxEpaisseur]
 df = df.loc[df['epaisseurdernierstravaux']!= minEpaisseur]
 
-#There are no duplicated rows.
+
 sns.kdeplot(df['epaisseurdernierstravaux'])
 min(df.epaisseurdernierstravaux)
 max(df.epaisseurdernierstravaux)
