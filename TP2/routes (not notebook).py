@@ -31,15 +31,17 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import re
+from collections import Counter
 #opening file
 df = pd.read_csv('C:/Users/user/Desktop/RepositoryTP/PythonBDTN-TU/TP2/CGDRSGDRDTRoutesdernierstravaux.csv',sep=";")
 pd.isna(df['epaisseurdernierstravaux']).sum()
-#Okay, no Na values, at least no bad data in this dataset.
+#Okay, no Na values.
+
+#Part 1 : 
 
 #1.Check if epaisseurdersnierstravaux is numeric format.
 # Let's check if that epaisseurdernierstravaux is a numeric value.
 df.dtypes
-
 #It's an object value, let's convert that column into numeric values.
 pd.to_numeric(df['epaisseurdernierstravaux'],errors='ignore')
 df.dtypes
@@ -55,11 +57,31 @@ df.epaisseurdernierstravaux.describe()
 df[df.epaisseurdernierstravaux==min(df.epaisseurdernierstravaux)].count()
 df[df.epaisseurdernierstravaux==max(df.epaisseurdernierstravaux)].count()
 
+#Thats 246 wrong values. let's delete those as we can't make hypothesis on their real values.
+min(df.epaisseurdernierstravaux)
+max(df.epaisseurdernierstravaux)
 maxEpaisseur = df.epaisseurdernierstravaux.max()
 minEpaisseur = df.epaisseurdernierstravaux.min()
 #Dropping max and min values in the dataframe
-df.drop(df.epaisseurdernierstravaux != maxEpaisseur)
-df.drop(df.epaisseurdernierstravaux == minEpaisseur)
+df = df.loc[df['epaisseurdernierstravaux']!= maxEpaisseur]
+df = df.loc[df['epaisseurdernierstravaux']!= minEpaisseur]
 
-#Thats 246 wrong values. let's delete those as we can't make hypothesis on their real values.
 #There are no duplicated rows.
+min(df.epaisseurdernierstravaux)
+max(df.epaisseurdernierstravaux)
+
+#That's better now, let's check stats now.
+df.describe()
+
+#Now let's clean other columns, age has 0 values, we can drop this column.
+df = df.drop(['age'],axis=1)
+# Part 2 : what are the 5 most kind of construction.
+df.dtypes
+#anneedernierstravaux is an object type, let's change it to string value, count and finally plot.
+df['naturedernierstravaux'] = df['naturedernierstravaux'].astype(str)
+construction_kind_list = df['naturedernierstravaux']
+most_kinds_construction = pd.DataFrame(Counter(construction_kind_list).most_common(5))
+# Now let's plot
+most_kinds_construction.plot.bar(x=0,rot=0,title='The 5 most kind of construction')
+
+# Here we have the 5 most kind of construction in the dataset.
