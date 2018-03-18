@@ -53,11 +53,12 @@ df.dtypes
 
 # 2.Identify and clean aberrants values, please justify.
 df.epaisseurdernierstravaux.describe()
+sns.kdeplot(df['epaisseurdernierstravaux'])
 # 9999.99 as max is too high, same for 0. lets delete those values in the column and let's see if that changes those stats
 df[df.epaisseurdernierstravaux==min(df.epaisseurdernierstravaux)].count()
 df[df.epaisseurdernierstravaux==max(df.epaisseurdernierstravaux)].count()
 
-#Thats 246 wrong values. let's delete those as we can't make hypothesis on their real values.
+#Thats 246 wrong values. let's delete those as they are absurd values.
 min(df.epaisseurdernierstravaux)
 max(df.epaisseurdernierstravaux)
 maxEpaisseur = df.epaisseurdernierstravaux.max()
@@ -67,6 +68,7 @@ df = df.loc[df['epaisseurdernierstravaux']!= maxEpaisseur]
 df = df.loc[df['epaisseurdernierstravaux']!= minEpaisseur]
 
 #There are no duplicated rows.
+sns.kdeplot(df['epaisseurdernierstravaux'])
 min(df.epaisseurdernierstravaux)
 max(df.epaisseurdernierstravaux)
 
@@ -75,6 +77,8 @@ df.describe()
 
 #Now let's clean other columns, age has 0 values, we can drop this column.
 df = df.drop(['age'],axis=1)
+
+
 # Part 2 : what are the 5 most kind of construction.
 df.dtypes
 #anneedernierstravaux is an object type, let's change it to string value, count and finally plot.
@@ -85,3 +89,17 @@ most_kinds_construction = pd.DataFrame(Counter(construction_kind_list).most_comm
 most_kinds_construction.plot.bar(x=0,rot=0,title='The 5 most kind of construction')
 
 # Here we have the 5 most kind of construction in the dataset.
+# For each year, what's the number of construction made and the mean thickness ? 
+
+#Number of construction each year : 
+construction_year_list = df['anneedernierstravaux']
+number_construction_year = pd.DataFrame.from_dict(Counter(construction_year_list),orient='index').reset_index()
+number_construction_year.plot.barh(x='index',rot=0,title='Construction per year',fontsize=5)
+
+#Mean thickness per year.
+mean_thickness_year = df.groupby(['anneedernierstravaux'],as_index=False).mean()
+mean_thickness_year = mean_thickness_year.sort_values(by='epaisseurdernierstravaux',ascending=False)
+mean_thickness_year = mean_thickness_year[['anneedernierstravaux','epaisseurdernierstravaux']]
+mean_thickness_year.plot.barh(x='anneedernierstravaux',rot=0,title='Construction per year',fontsize=5)
+
+# It seems that thickness diminished through time. Maybe quality of the product has increased, that is curious.
