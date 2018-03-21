@@ -44,7 +44,7 @@ depart_participants = pd.Series(['TIC','TIC','GEE','GEE','GEE','SEI','SEI','ET',
 participants = pd.concat([first_name,last_name],axis=1)
 participants = pd.concat([participants,specialization],axis=1)
 participants = pd.concat([participants,depart_participants],axis=1)
-participants.columns = ['Fname','Lname','spe']
+participants.columns = ['Fname','Lname','spe','department']
 dict_count_depart = {"TIC":0,"GEE":0,"SEI":0,"ET":0}
 # Percentage of people in each department in a new DataFrame
 for row in participants.itertuples():
