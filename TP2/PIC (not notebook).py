@@ -20,7 +20,7 @@ pour l’activité.
 import pandas as pd
 import seaborn as sns
 import numpy as np
-
+import matplotlib as mt
 
 department_distrib =  pd.Series(['TIC','TIC','TIC','TIC','TIC','GEE','GEE','GEE','GEE','SEI','SEI','SEI','SEI','ET','ET'])
 spe_name =pd.Series(['Architecture et securite des reseaux','Big Data pour la Transformation Numerique','Ingenieur d\'affaire-Ingenieur Reseaux','Ingenierie des Services du Numerique','Ingenieur Finance','Automatique et Robotique Industrielle','Energie et Développement Durable','Genie Électrique et Transport','Ingénieur d’Affaires : Distribution Energie et Signaux','Mécatronique Genie Electrique','Ingenierie des Systèmes Embarques : Vehicule Autonome','Ingenierie des Systèmes Embarques : Objets Communicants','Ingenierie des Systemes Medicaux','Electronique des Systemes pour l’Automobile et l’Aeronautique','Ingenierie Telecom'])
@@ -63,9 +63,18 @@ df_percentage[0] = percentage_serie
 df_percentage.columns=['Pourcentage']
 df_percentage.to_csv('C:/Users/user/Desktop/RepositoryTP/PythonBDTN-TU/TP2/resultsPercentageExercice2')
 
-    
-    
-    
+#TP3 part :
+# Utilisez matplotlib pour générer deux visualisations différentes de la répartition
+# de votre groupe de PING :
+# 1. sous forme de diagramme en barres,
+# 2. sous forme de camembert.
+import matplotlib.pyplot as plt
+# Bar histogram
+plt.hist(df_percentage,10,normed=1,facecolor='g',alpha=0.75)
+# Cheese figure
+labels = 'TIC','GEE','SEI','ET'
+plt.pie(df_percentage,labels=labels,autopct='%1.1f%%',shadow=True, startangle=90)
+
     
     
     

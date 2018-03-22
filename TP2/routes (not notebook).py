@@ -103,3 +103,9 @@ mean_thickness_year = mean_thickness_year[['anneedernierstravaux','epaisseurdern
 mean_thickness_year.plot.barh(x='anneedernierstravaux',rot=0,title='Construction per year',fontsize=5)
 
 # It seems that thickness diminished through time. Maybe quality of the product has increased, that is curious.
+
+#TP3 Part : 
+import matplotlib.pyplot as plt
+# Bar histogram
+plt.hist(number_construction_year,10,normed=1,facecolor='g',alpha=0.75)
+plt.hist(mean_thickness_year,10,normed=1,facecolor='g',alpha=0.75)
