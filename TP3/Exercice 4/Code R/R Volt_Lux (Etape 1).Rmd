@@ -1,0 +1,87 @@
+---
+title: "Luxmètre"
+author: "Louis Legrand - Henry Peters - Philippe Tu - Hong Yu - Melanie Bergeot"
+date: "2018/2/23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Chargement des datas
+```{r}
+namecol=c("TimeStamp","V1","V2")
+data_original=read.csv("../AllDatas_20160329_205341_ch2_output.csv",header = FALSE,sep=";",col.names = namecol)
+```
+exemple pour le capteur ch2  
+
+##Calcul du coefficient
+**U0 est la valeur moyenne pendant la première minute**  
+```{r}
+minute=data_original[1,1]+60000000
+minute_data=subset(data_original,TimeStamp<minute)
+U0=(mean(minute_data$V1)+mean(minute_data$V2))/2
+Umax=3.3
+Lmax=3000
+coeff=Lmax/(Umax-U0)
+U0
+```
+* calcul du TimeStamp de la 1ère minute -> $minute  
+* enregistement des datas de la première minute -> minute_data  
+* U0=moy(datas)=(moy(Valeur1)+moy(Valeur2))/2   
+*Puisque l'on a 2 colonnes de valeurs, on fait la moyenne de chaque colonnes /2 *    
+* coefficient=Lmax/(Umax-U0)  
+
+
+##Calcul des TimeStamps de V2
+```{r}
+data_1=subset(data_original,TimeStamp>minute,select=TimeStamp:V1)
+data_2=subset(data_original,TimeStamp>minute,select=c(TimeStamp,V2))
+```
+**data_1**:tableau de V1 avec TimeStamp correct  
+**data_2**:tableau de V2 avec TimeStamp incorrect  
+
+
+```{r}
+T1=data_2["TimeStamp"]
+T2=T1[-1,]
+T3=(T1+T2)/2
+data_2["TimeStamp"]=T3
+data_2=data_2[-230981,]
+```
+* Premièrement, on copie les TimeStamps dans T1  
+* On recopie T1, en supprimant la première ligne (décalage)  
+* T3 est la valeur moyenne de T1 et T2, càd, la valeur moyenne de chaque bloc de deux TimeStamp voisins du tableau original  
+* On remplace ensuite les TimeStamps de data_2 par T3  
+* Pour finir, on supprime la dernière ligne de data_2 car son TimeStamp est inutil  
+
+On a donc un data_2 avec un timeStamp associé pour chaque valeur.  
+
+##Assemblage du tableau
+```{r}
+colnames(data_1)=c("TimeStamp","Volt")
+colnames(data_2)=c("TimeStamp","Volt")
+data_volt=rbind(data_1,data_2)
+```
+Les noms des colonnes doivent être les mêmes avant de les assembler.  
+
+**data_volt**:data[TimeStamp,Volt]  
+
+
+##Passage de Volt à Lux
+```{r}
+lux=(data_volt$Volt-U0)*coeff
+data_lux=data_volt
+data_lux["Volt"]=lux
+colnames(data_lux)=c("TimeStamp","Lux")
+summary(data_lux)
+```
+**data_lux**:data[TimeStamp,Lux]
+
+
+##Enregistement des données
+```{r}
+#write.csv(data_lux,file = "Datas_20160329_205341_ch2_resultat.csv",row.names = FALSE)
+```
+

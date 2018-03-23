@@ -1,0 +1,92 @@
+---
+title: "R Notebook"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+#Transformation des donnees pr?lev?es par les capteurs GPS
+
+**Objectif :**
+
+- Projection des donnees GPS issue d'un capteur GPS reli? aux satellites (WPS 84) sur le r?f?rentiel turque (ESPG 5254)
+- D?placement des donn?es sur le capteur GPS vers les capteurs lux.
+
+**Methode : **
+
+Chargement des librairies necessaires aux calculs qui suivront pour la transformation.
+```{r}
+library(sp)
+library(rgdal)
+library(maptools)
+
+```
+
+**Premier objectif :** 
+
+Fonction projetant la position du GPS dans le referentiel **WPS84** (equivalent EPSG 4326) vers **EPSG 5254** (referentiel turque). Les librairies externes citees sont utilis?es afin de transformer les donn?es.
+```{r}
+projection<-function(long1,lat1,tab) {
+  data = data.frame(long=long1, lat=lat1)
+  coordinates(data) <- ~ lat+long
+  proj4string(data) <- CRS("+init=epsg:4326")
+  data.proj <- spTransform(data, CRS("+init=epsg:5254"))
+  return(cbind(tab,coordinates(data.proj)))
+}
+```
+
+**Deuxieme objectif :**
+
+Fonction retrouvant la position des capteurs lux par rapport au capteur GPS (voir sch?ma du recepteur).
+Cette fonction prend en compte **la position en x et y du capteur GPS** et **la vitesse du vehicule** afin d'avoir la position des capteurs lux en fonctions des axes X et Y. 
+
+Quand la vitesse est nulle, la position n'est pas calcul?e. Cependant comme le vehicule est ? l'arret, la valeur des lux est la meme entre le temps juste avant et apres l'arret (en considerant que la lumiere est ? l'arret aussi).
+
+La fonction retourne un tableau avec les donn?es de chaque capteur 
+```{r}
+position_capteur<-function(donnee_GPS,x,y,Vhor,Vver){
+    module<-sqrt(Vver*Vver + Vhor*Vhor)
+    capteur_0_x<- x + 0.370*cos(Vver/module*pi/2) + 0.797*sin(Vver/module*pi/2)
+    capteur_0_y<- y + 0.370*sin(Vver/module*pi/2) + 0.797*cos(Vver/module*pi/2)
+    capteur_1_x<- x + 0.370*cos(Vver/module*pi/2) + 0.150*sin(Vver/module*pi/2)
+    capteur_1_y<- y + 0.370*sin(Vver/module*pi/2) + 0.150*cos(Vver/module*pi/2)
+    capteur_2_x<- x + 0.370*cos(Vver/module*pi/2) - 0.498*sin(Vver/module*pi/2)
+    capteur_2_y<- y + 0.370*sin(Vver/module*pi/2) - 0.498*cos(Vver/module*pi/2)
+    return(cbind(donnee_GPS,module,capteur_0_x,capteur_0_y,capteur_1_x,capteur_1_y,capteur_2_x,capteur_2_y))
+}
+```
+
+Initialisation des variables depuis les donnees en CSV du capteur GPS.
+```{r}
+donnee_GPS<-read.csv("DATA_SERA_IST/DATA_SERA_IST/AllDatas2_20160329_205341_NmeaTimeLatLongSatnbAtlHSpeedVSpeed_output.csv", header=FALSE, sep=";")
+names(donnee_GPS)<-c("TimeStamp","Heure GPS(HHMMSS)","Longitude","Latitude","Nombre de satellites","Precision","Altitude","Vitesse horizontale","Vitesse verticale")
+
+```
+
+
+Lancement du programme principal
+```{r}
+donnee_GPS<-projection(donnee_GPS$Longitude, donnee_GPS$Latitude,donnee_GPS) #Fonction de transformation des donn?es
+
+names(donnee_GPS)<-c("TimeStamp","Heure GPS(HHMMSS)","Latitude","Longitude","Nombre de satellites","Precision","Altitude","Vitesse_horizontale","Vitesse_verticale","x","y")
+
+resultat<-position_capteur(donnee_GPS,donnee_GPS$x,donnee_GPS$y,donnee_GPS$Vitesse_horizontale,donnee_GPS$Vitesse_verticale) #fonction de projection sur les capteurs
+
+capteur0<-cbind(resultat$TimeStamp,resultat$capteur_0_x,resultat$capteur_0_y)
+capteur1<-cbind(resultat$TimeStamp,resultat$capteur_1_x,resultat$capteur_1_y)
+capteur2<-cbind(resultat$TimeStamp,resultat$capteur_2_x,resultat$capteur_2_y)
+
+```
+
+
+Visualisation et ecriture du resultat dans un fichier CSV par capteurs
+```{r}
+
+View(capteur0)#Visulation des donnees
+View(capteur1)
+View(capteur2)
+write.csv(capteur0,file="DATA_SERA_IST/capteur0.csv")#Ecriture des donnees
+write.csv(capteur0,file="DATA_SERA_IST/capteur1.csv")
+write.csv(capteur0,file="DATA_SERA_IST/capteur2.csv")
+```
+
+Fin du programme de transformation.

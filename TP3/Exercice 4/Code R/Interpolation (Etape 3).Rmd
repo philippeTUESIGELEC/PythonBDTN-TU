@@ -1,0 +1,129 @@
+---
+title: "Interpolation de donnees pour 1 capteur"
+author : LEGRAND Louis, TU Philippe
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE,results='hide',message=FALSE}
+library(plyr)
+library(dplyr)
+library(zoo)
+```
+## Importation des librairies & Préparation des données
+```{r echo=FALSE,message=FALSE}
+# Used to convert factor to proper numeric class variables
+as.numeric.factor <- function(x) {as.numeric(levels(x))[x]}
+# File names that will be imported
+lux_sensor_0_filename<-"converted_volt_to_lux_AllDatas_20160329_205341_ch0_output.csv"
+coordinates_0_filename<-"capteur0.csv"
+# Column Names 
+lux_sensor_column_names<-c("Timestamp_coordinates","Lux")
+coordinates_sensorcol_names<-c("Timestamp_coordinates","X","Y")
+# Opening files that will be needed 
+sensor_0_dataset<-read.csv(lux_sensor_0_filename, header=FALSE, sep=",")
+coordinates_sensor_0_data<-read.csv(file=coordinates_0_filename,header=FALSE,sep = ",")
+#Drop first columns of coordinates_sensor files : 
+coordinates_sensor_0_data$V1<-NULL
+# Naming columns OK
+colnames(sensor_0_dataset)<-lux_sensor_column_names
+colnames(coordinates_sensor_0_data)<-coordinates_sensorcol_names
+# Delete the first row of each file 
+sensor_0_dataset<-data.frame(sensor_0_dataset[-1,])
+coordinates_sensor_0_data<-data.frame(coordinates_sensor_0_data[-1,])
+# Resetting row names 
+rownames(sensor_0_dataset) <- seq(length=nrow(sensor_0_dataset)) 
+rownames(coordinates_sensor_0_data) <- seq(length=nrow(coordinates_sensor_0_data)) 
+# Taking out the first minute of timestamp in each coordinates_sensor files
+minute_milliseconds=as.numeric(coordinates_sensor_0_data[1,1])+60000000
+coordinates_sensor_0_data = subset(coordinates_sensor_0_data,as.numeric.factor(Timestamp_coordinates)>minute_milliseconds)
+rownames(coordinates_sensor_0_data) <- seq(length=nrow(coordinates_sensor_0_data)) 
+head(coordinates_sensor_0_data,10)
+```
+
+
+```{r echo=FALSE,message=FALSE,results='hide',message=FALSE}
+#Creating vectors containing an offset row
+temp0 <- c(0,as.numeric.factor(coordinates_sensor_0_data$Timestamp_coordinates))
+ft_delta<-function(timestamp,timestamp_offset){
+  res<-as.character(timestamp-timestamp_offset)
+  return(res)
+}
+#Taking out the first row
+temp0<-head(temp0,-1)
+#Creating delta_TimeStamp column
+coordinates_sensor_0_data$delta_TimeStamp<-mapply(ft_delta,as.numeric.factor(coordinates_sensor_0_data$Timestamp_coordinates),temp0)
+#Shift row up of one row 
+shift <- function(x, n){
+  c(x[-(seq(n))], rep(NA, n))
+}
+#Shifting rows on GPS coordinates file
+coordinates_sensor_0_data$delta_TimeStamp<-shift(coordinates_sensor_0_data$delta_TimeStamp,1)
+head(coordinates_sensor_0_data,10)
+```
+
+##Données préparées,colonnes "X_offset","Y_offset","delta_TimeStamp" : colonnes X et Y décalées d'une ligne, difference de temps entre deux mesures GPS
+```{r echo=FALSE,message=FALSE}
+coordinates_sensor_0_data$Timestamp_gps <- coordinates_sensor_0_data$Timestamp_coordinates
+coordinates_sensor_0_data$X_offset <- head(c(0, as.character(coordinates_sensor_0_data$X)), -1)
+coordinates_sensor_0_data$Y_offset <- head(c(0, as.character(coordinates_sensor_0_data$Y)), -1)
+head(coordinates_sensor_0_data,10)
+```
+
+
+```{r echo=FALSE,message=FALSE,results='hide',message=FALSE}
+#Now Joining lux data frame with sensor dataframe
+joined_dataframe_0<-full_join(coordinates_sensor_0_data,sensor_0_dataset)
+# Sort timestamps
+arranged_joined_dataframe_0<-arrange(joined_dataframe_0,as.numeric(Timestamp_coordinates))
+# We take out 28 rows because we don't have the delta_TimeStamp for those 28 rows to do further calculations.
+arranged_joined_dataframe_0<-slice(arranged_joined_dataframe_0,29:5772293)
+head(arranged_joined_dataframe_0,10)
+```
+##On inclut les données des Luxmètres
+##On duplique le contenu des colonnes récemment créées afin de faire correspondre des données GPS à chaque mesure de Luxmètre
+```{r echo=FALSE,message=FALSE}
+#Using na.locf to copy NA values by the most recent non-NA prior to it.
+arranged_joined_dataframe_0$X<-na.locf(arranged_joined_dataframe_0$X)  
+arranged_joined_dataframe_0$Y<-na.locf(arranged_joined_dataframe_0$Y)  
+arranged_joined_dataframe_0$delta_TimeStamp<-na.locf(arranged_joined_dataframe_0$delta_TimeStamp)
+arranged_joined_dataframe_0$Timestamp_gps<-na.locf(arranged_joined_dataframe_0$Timestamp_gps)
+arranged_joined_dataframe_0$X_offset<-na.locf(arranged_joined_dataframe_0$X_offset)
+arranged_joined_dataframe_0$Y_offset<-na.locf(arranged_joined_dataframe_0$Y_offset)
+#Taking out all lines with NA
+arranged_joined_dataframe_0<-na.omit(arranged_joined_dataframe_0)
+head(arranged_joined_dataframe_0,10)
+```
+##On calcule les valeurs qui permettront le calcul des coordonnées finales (X,Y)
+```{r echo=FALSE,message=FALSE}
+#Calculate coordinates
+#Difference between timestamp of lux measure and its lower GPS timestamp value
+arranged_joined_dataframe_0$dif_lower_and_lux_timestamps<-as.numeric(arranged_joined_dataframe_0$Timestamp_coordinates)-as.numeric.factor(arranged_joined_dataframe_0$Timestamp_gps)
+#Ratios
+arranged_joined_dataframe_0$ratio_timestamps_lux<-(arranged_joined_dataframe_0$dif_lower_and_lux_timestamps*100)/as.numeric(arranged_joined_dataframe_0$Timestamp_gps)
+#Absolute values
+arranged_joined_dataframe_0$abs_x_diff<-abs(as.numeric.factor(arranged_joined_dataframe_0$X)-as.numeric(arranged_joined_dataframe_0$X_offset))
+arranged_joined_dataframe_0$abs_y_diff<-abs(as.numeric.factor(arranged_joined_dataframe_0$Y)-as.numeric(arranged_joined_dataframe_0$Y_offset))
+#Sign difference to know if we will have to substract or add when we will calculate final X and Y
+arranged_joined_dataframe_0$sign_diff_x<-sign(as.numeric( arranged_joined_dataframe_0$X )-as.numeric(arranged_joined_dataframe_0$X_offset))
+arranged_joined_dataframe_0$sign_diff_y<-sign(as.numeric( arranged_joined_dataframe_0$Y )-as.numeric(arranged_joined_dataframe_0$Y_offset))
+head(arranged_joined_dataframe_0,10)
+```
+
+#Nous utilisons toutes les données précédentes pour calculer les coordonnées finales (X,Y) avec ifelse
+```{r echo=FALSE,message=FALSE}
+#If sign_diff_x ==1 : 
+arranged_joined_dataframe_0$final_x<-ifelse(arranged_joined_dataframe_0$sign_diff_x==1,as.character(as.numeric(arranged_joined_dataframe_0$X_offset) + (arranged_joined_dataframe_0$abs_x_diff/100)*arranged_joined_dataframe_0$ratio_timestamps_lux),as.character(as.numeric(arranged_joined_dataframe_0$X_offset) - (arranged_joined_dataframe_0$abs_x_diff/100)*arranged_joined_dataframe_0$ratio_timestamps_lux))
+arranged_joined_dataframe_0$final_y<-ifelse(arranged_joined_dataframe_0$sign_diff_y==1,as.character(as.numeric(arranged_joined_dataframe_0$Y_offset) + (arranged_joined_dataframe_0$abs_y_diff/100)*arranged_joined_dataframe_0$ratio_timestamps_lux),as.character(as.numeric(arranged_joined_dataframe_0$Y_offset) - (arranged_joined_dataframe_0$abs_y_diff/100)*arranged_joined_dataframe_0$ratio_timestamps_lux))
+#Now we have all data to put it on a map,
+final_result_sensor_0<-subset(arranged_joined_dataframe_0,select=c("Timestamp_coordinates","final_x","final_y","Lux"))
+rownames(final_result_sensor_0) <- seq(length=nrow(final_result_sensor_0)) 
+head(final_result_sensor_0,10)
+```
+
+write.csv(final_result_sensor_0,file="capteur_0",row.names=FALSE)
