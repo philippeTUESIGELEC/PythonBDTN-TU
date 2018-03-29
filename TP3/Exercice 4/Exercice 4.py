@@ -49,10 +49,32 @@ def volt_to_lux(path):
     data_lux = data_volt.copy()
     data_lux['Volt'] = lux
     return data_lux
-data_1_path = "C:/Users/user/Desktop/RepositoryTP/PythonBDTN-TU/TP3/Exercice 4/AllDatas_20160329_205341_ch0_output.csv"
-data_2_path = "C:/Users/user/Desktop/RepositoryTP/PythonBDTN-TU/TP3/Exercice 4/AllDatas_20160329_205341_ch1_output.csv"
-data_3_path = "C:/Users/user/Desktop/RepositoryTP/PythonBDTN-TU/TP3/Exercice 4/AllDatas_20160329_205341_ch2_output.csv"
+
+
+data_1_path = "C:/Users/user/Desktop/AllDatas_20160329_205341_ch0_output.csv"
+data_2_path = "C:/Users/user/Desktop/AllDatas_20160329_205341_ch1_output.csv"
+data_3_path = "C:/Users/user/Desktop/AllDatas_20160329_205341_ch2_output.csv"
 
 data_1_lux = volt_to_lux(data_1_path)
 data_2_lux = volt_to_lux(data_2_path)
 data_3_lux = volt_to_lux(data_3_path)
+
+# GPS Data conversion :
+from pyproj import Proj, transform
+import pandas as pd
+import numpy as np
+
+def convert_to_wgs_84(df):
+    wgs84 = Proj(init='EPSG:4326')
+    epsg5254 = Proj(init='epsg:5254')
+    x,y = transform(wgs84,epsg5254,df['Latitude'],df['Longitude'])
+    return x
+gps_path = "C:/Users/user/Desktop/AllDatas2_20160329_205341_NmeaTimeLatLongSatnbAtlHSpeedVSpeed_output.csv"
+
+def gps_data_conversion(path):
+    df_gps = pd.read_csv(gps_path,sep=';')
+    colnames_gps=['TimeStamp','Heure','Longitude','Latitude','Nbr statellites','Precision','Altitude','Vitesse horizontale','Vitesse verticale']
+    df_gps.columns = colnames_gps
+    
+    result = df_gps.apply(convert_to_wgs_84,axis=1)
+
