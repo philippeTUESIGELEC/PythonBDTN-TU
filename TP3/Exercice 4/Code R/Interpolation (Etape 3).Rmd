@@ -29,6 +29,7 @@ coordinates_sensorcol_names<-c("Timestamp_coordinates","X","Y")
 sensor_0_dataset<-read.csv(lux_sensor_0_filename, header=FALSE, sep=",")
 coordinates_sensor_0_data<-read.csv(file=coordinates_0_filename,header=FALSE,sep = ",")
 #Drop first columns of coordinates_sensor files : 
+
 coordinates_sensor_0_data$V1<-NULL
 # Naming columns OK
 colnames(sensor_0_dataset)<-lux_sensor_column_names

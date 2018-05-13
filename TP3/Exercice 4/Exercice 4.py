@@ -68,13 +68,59 @@ def convert_to_wgs_84(df):
     wgs84 = Proj(init='EPSG:4326')
     epsg5254 = Proj(init='epsg:5254')
     x,y = transform(wgs84,epsg5254,df['Latitude'],df['Longitude'])
-    return x
+    return x,y
+
 gps_path = "C:/Users/user/Desktop/AllDatas2_20160329_205341_NmeaTimeLatLongSatnbAtlHSpeedVSpeed_output.csv"
 
-def gps_data_conversion(path):
-    df_gps = pd.read_csv(gps_path,sep=';')
-    colnames_gps=['TimeStamp','Heure','Longitude','Latitude','Nbr statellites','Precision','Altitude','Vitesse horizontale','Vitesse verticale']
-    df_gps.columns = colnames_gps
-    
-    result = df_gps.apply(convert_to_wgs_84,axis=1)
+df_gps = pd.read_csv(gps_path,sep=';')
+colnames_gps=['TimeStamp','Heure','Longitude','Latitude','Nbr statellites','Precision','Altitude','Vitesse horizontale','Vitesse verticale']
+df_gps.columns = colnames_gps
+result = df_gps.apply(convert_to_wgs_84,axis=1)
+result = pd.DataFrame(result)
+result.columns = ['mergedXY']
+result = result['mergedXY'].astype('str')
+result = result.str.replace("(","")
+result = result.str.replace(")","")
+result = pd.DataFrame(result.str.split(',',1).tolist(),columns = ['X','Y'])
+result['X'] = result['X'].astype(float)
+result['Y'] = result['Y'].astype(float)
+result = pd.DataFrame.reset_index(result,drop=True)
+result = pd.concat([result,df_gps['TimeStamp']],axis=1)
+interpolation = result
 
+# Now GPS transformation is done.
+del df_gps
+del result
+
+# Interpolation
+
+#Shifting TimeStamp column to one row
+interpolation['decale'] = interpolation['TimeStamp'].copy()
+interpolation['decale'] = interpolation.decale.shift(-1)
+interpolation.drop(interpolation.tail(1).index,inplace=True)
+
+# Creating a delta column which corresponds to Timestamp(t) - Timestamp(t+1)
+
+interpolation['deltaTimeStamp'] = interpolation['decale'] - interpolation['TimeStamp']
+
+# Taking out first minute of Interpolation dataframe 
+minute = data_1.iloc[0].TimeStamp
+interpolation = interpolation.drop(interpolation[interpolation.TimeStamp<minute].index)
+
+# Creating x_offset and y_offset on interpolation dataframe
+interpolation['x_offset'] = interpolation['X'].copy()
+interpolation['x_offset'] = interpolation.x_offset.shift(-1)
+interpolation.drop(interpolation.tail(1).index,inplace=True)
+
+interpolation['y_offset'] = interpolation['Y'].copy()
+interpolation['y_offset'] = interpolation.y_offset.shift(-1)
+interpolation.drop(interpolation.tail(1).index,inplace=True)
+
+# Merging sensor dataframe and Interpolation dataframe
+data_1_append = data_1.append(interpolation)
+data_1_append = data_1_append.sort_values(by='TimeStamp')
+
+#  On duplique le contenu des colonnes récemment créées 
+# afin de faire correspondre des données GPS à chaque mesure de Luxmètre
+
+#Calculate final (x,y) values.
